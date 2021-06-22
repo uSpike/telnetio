@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import List, Type, TypeVar
 
 import anyio
@@ -18,7 +16,7 @@ class AnyioTelnetServer(ByteStream):
         self._machine = TelnetMachine()
         self._events: List[Event] = []
 
-    async def __aenter__(self) -> AnyioTelnetServer:
+    async def __aenter__(self) -> "AnyioTelnetServer":
         await self._begin_negotiation()
         return self
 
