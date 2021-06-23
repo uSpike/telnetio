@@ -4,7 +4,7 @@ on: pull_request
 env:
   POETRY_VERSION: 1.1.6
   POETRY_HOME: ~/.poetry
-  PRE_COMMIT_HOME: ~/.pre-commit
+  PRE_COMMIT_HOME: ~/.cache/pre-commit
 
 jobs:
   ci:
@@ -19,8 +19,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Cache Poetry
+        id: cache-poetry
+        uses: actions/cache@v2.1.5
+        with:
+          path: ${{ env.POETRY_HOME }}
+          key: ${{ runner.os }}-poetry-${{ env.POETRY_VERSION }}-${{ matrix.python-version }}
+
       - name: Install poetry
         uses: abatilo/actions-poetry@v2.1.2
+        if: steps.cache-poetry.outputs.cache-hit != 'true'
         with:
           poetry-version: ${{ env.POETRY_VERSION }}
 
