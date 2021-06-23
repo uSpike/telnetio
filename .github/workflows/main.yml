@@ -4,20 +4,22 @@ on: pull_request
 jobs:
   ci:
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9]
-        poetry-version: [1.1.6]
-        os: [ubuntu-20.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
+      - name: Install poetry
         uses: abatilo/actions-poetry@v2.0.0
         with:
-          poetry-version: ${{ matrix.poetry-version }}
+          poetry-version: 1.1.6
+      - name: Install package
+        run: poetry install -v
+      - name: Run checks
+        run: poetry run pre-commit run -a
       - name: Run tests
         run: poetry run pytest -v
