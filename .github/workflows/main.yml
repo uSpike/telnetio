@@ -22,7 +22,7 @@ jobs:
       - name: Install poetry
         uses: abatilo/actions-poetry@v2.1.2
         with:
-          poetry-version: ${{ env.python-version }}
+          poetry-version: ${{ env.POETRY_VERSION }}
 
       - name: Cache Dependencies 
         id: cache-deps
