@@ -24,14 +24,14 @@ jobs:
         with:
           poetry-version: ${{ env.POETRY_VERSION }}
 
-      - name: Cache Dependencies 
+      - name: Cache Dependencies
         id: cache-deps
         uses: actions/cache@v2.1.5
         with:
           path: ${{ github.workspace }}/.venv
           key: ${{ runner.os }}-poetry-${{ env.POETRY_VERSION }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-      - name: Cache pre-commit hooks 
+      - name: Cache pre-commit hooks
         id: cache-pre-commit
         uses: actions/cache@v2.1.5
         with:
