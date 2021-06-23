@@ -3,8 +3,6 @@ on: pull_request
 
 env:
   POETRY_VERSION: 1.1.6
-  POETRY_HOME: ~/.poetry
-  PRE_COMMIT_HOME: ~/.cache/pre-commit
 
 jobs:
   ci:
@@ -23,7 +21,7 @@ jobs:
         id: cache-poetry
         uses: actions/cache@v2.1.5
         with:
-          path: ${{ env.POETRY_HOME }}
+          path: ~/.poetry
           key: ${{ runner.os }}-poetry-${{ env.POETRY_VERSION }}-${{ matrix.python-version }}
 
       - name: Install poetry
@@ -37,20 +35,20 @@ jobs:
         uses: actions/cache@v2.1.5
         with:
           path: ${{ github.workspace }}/.venv
-          key: ${{ runner.os }}-poetry-${{ env.POETRY_VERSION }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Cache pre-commit hooks
-        id: cache-pre-commit
-        uses: actions/cache@v2.1.5
-        with:
-          path: ${{ env.PRE_COMMIT_HOME }}
-          key: ${{ runner.os }}-pre-commit-${{ env.POETRY_VERSION }}-${{ matrix.python-version }}-${{ hashFiles('**/.pre-commit-config.yaml') }}
+          key: ${{ runner.os }}-poetry-${{ env.POETRY_VERSION }}-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
 
       - name: Install dependencies
         if: steps.cache-deps.cache-hit != 'true'
         run: |
           poetry config virtualenvs.in-project true
           poetry install --no-interaction -E anyio
+
+      - name: Cache pre-commit hooks
+        id: cache-pre-commit
+        uses: actions/cache@v2.1.5
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ matrix.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Install pre-commit hooks
         if: steps.cache-pre-commit.cache-hit != 'true'
