@@ -26,7 +26,6 @@ jobs:
 
       - name: Install poetry
         uses: abatilo/actions-poetry@v2.1.2
-        if: steps.cache-poetry.outputs.cache-hit != 'true'
         with:
           poetry-version: ${{ env.POETRY_VERSION }}
 
