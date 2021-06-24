@@ -46,5 +46,4 @@ repos:
         language: system
         types: ["python"]
         entry: poetry run mypy
-        files: telnetio/
         require_serial: True

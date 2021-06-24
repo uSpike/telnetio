@@ -1,12 +1,28 @@
-from telnetio import Command, Data, Opt, SubCommand, TelnetMachine
+from typing import List
+
+from telnetio import Command, Event, Opt, ReceiveMessage, SubCommand, TelnetMachine
 
 
 def test_machine() -> None:
-    conn = TelnetMachine()
-    assert conn.receive_data(b"01234") == [Data.from_bytes(b"01234")]
-    assert conn.receive_data(b"0123\xff") == [Data.from_bytes(b"0123")]
-    assert conn.receive_data(b"\xff") == [Data.from_bytes(b"\xff")]
-    assert conn.receive_data(bytes([Opt.IAC, Opt.WILL, Opt.ECHO])) == [Command(Opt.WILL, Opt.ECHO)]
-    assert conn.receive_data(bytes([Opt.IAC, Opt.SB, Opt.WILL, Opt.ECHO, Opt.IAC, Opt.SE])) == [
-        SubCommand(Opt.WILL, bytearray([Opt.ECHO]))
-    ]
+    tn = TelnetMachine()
+    events: List[Event] = []
+    tn.register_event_cb(events.append)
+
+    tn.receive_data(b"01234")
+    assert events == [ReceiveMessage(bytearray(b"01234"))]
+    events.clear()
+
+    tn.receive_data(b"0123\xff")
+    assert events == [ReceiveMessage(bytearray(b"0123"))]
+    events.clear()
+
+    tn.receive_data(b"\xff")
+    assert events == [ReceiveMessage(bytearray(b"\xff"))]
+    events.clear()
+
+    tn.receive_data(bytes([Opt.IAC, Opt.WILL, Opt.ECHO]))
+    assert events == [Command(Opt.WILL, Opt.ECHO)]
+    events.clear()
+
+    tn.receive_data(bytes([Opt.IAC, Opt.SB, Opt.WILL, Opt.ECHO, Opt.IAC, Opt.SE]))
+    assert events == [SubCommand(Opt.WILL, bytearray([Opt.ECHO]))]

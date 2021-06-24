@@ -1,62 +1,65 @@
-from typing import List, Type, TypeVar
+import math
+from contextlib import asynccontextmanager
+from types import TracebackType
+from typing import AsyncIterator, Optional, Type
 
 import anyio
-from anyio.abc import AnyByteStream, ByteStream
+from anyio.abc import AnyByteStream, ByteStream, TaskGroup
 from anyio.streams.buffered import BufferedByteReceiveStream
 
-from ._machine import Data, Event, TelnetMachine
-
-ET = TypeVar("ET", bound=Event)
+from ._machine import Event, ReceiveMessage, SendData, TelnetMachine
 
 
 class AnyioTelnetServer(ByteStream):
+    _task_group: TaskGroup
+
     def __init__(self, stream: AnyByteStream) -> None:
-        self._stream_send = stream
-        self._stream_receive = BufferedByteReceiveStream(stream)
+        self._stream = stream
+        self._msg_stream_producer, msg_stream_consumer = anyio.create_memory_object_stream(math.inf, item_type=bytes)
+        self._msg_stream_buff = BufferedByteReceiveStream(msg_stream_consumer)
         self._machine = TelnetMachine()
-        self._events: List[Event] = []
+        self._machine.register_event_cb(self._receive_event)
+
+    @asynccontextmanager
+    async def _make_ctx(self) -> "AsyncIterator[AnyioTelnetServer]":
+        async with anyio.create_task_group() as self._task_group:
+            self._task_group.start_soon(self._receive_worker)
+            try:
+                yield self
+            finally:
+                self._task_group.cancel_scope.cancel()
+                await self.aclose()
 
     async def __aenter__(self) -> "AnyioTelnetServer":
-        await self._begin_negotiation()
-        return self
+        self._ctx = self._make_ctx()
+        return await self._ctx.__aenter__()
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        await self._ctx.__aexit__(exc_type, exc_value, traceback)
+
+    def _receive_event(self, event: Event) -> None:
+        if isinstance(event, ReceiveMessage):
+            self._msg_stream_producer.send_nowait(event.contents)
+        elif isinstance(event, SendData):
+            self._task_group.start_soon(self._stream.send, event.contents)
+
+    async def _receive_worker(self) -> None:
+        async for data in self._stream:
+            self._machine.receive_data(data)
 
     async def aclose(self) -> None:
-        await self._stream_receive.aclose()
+        await self._msg_stream_buff.aclose()
 
     async def send_eof(self) -> None:
-        pass
-
-    async def _begin_negotiation(self) -> None:
-        pass
+        await self._stream.send_eof()
 
     async def receive(self, max_bytes: int = 4096) -> bytes:
-        data = await self._receive_event(event_type=Data, max_bytes=max_bytes)
-        return bytes(data.contents)
-
-    async def _receive_event(self, event_type: Type[ET] = Event, max_bytes: int = 4096) -> ET:  # type: ignore[assignment]  # https://github.com/python/mypy/issues/3737
-        while True:
-            for idx, event in enumerate(self._events):
-                if isinstance(event, event_type):
-                    self._events.pop(idx)
-                    return event
-            data = await self._stream_receive.receive(max_bytes=max_bytes)
-            for event in self._machine.receive_data(data):
-                self._events.append(event)
+        return await self._msg_stream_buff.receive(max_bytes=max_bytes)
 
     async def send(self, data: bytes) -> None:
-        data = self._machine.send(data)
-        await self._stream_send.send(data)
-
-
-if __name__ == "__main__":
-    # simple telnet echo server
-    async def handler(stream: AnyByteStream) -> None:
-        async with AnyioTelnetServer(stream) as telnet:
-            async for data in telnet:
-                await telnet.send(data)
-
-    async def main() -> None:
-        listener = await anyio.create_tcp_listener(local_port=1234)
-        await listener.serve(handler)
-
-    anyio.run(main)
+        self._machine.send_message(data)
