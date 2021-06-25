@@ -7,7 +7,7 @@ import anyio
 from anyio.abc import AnyByteStream, ByteStream, TaskGroup
 from anyio.streams.buffered import BufferedByteReceiveStream
 
-from ._machine import Event, ReceiveMessage, SendData, TelnetMachine
+from ._machine import Event, TelnetMachine
 
 
 class AnyioTelnetServer(ByteStream):
@@ -19,6 +19,8 @@ class AnyioTelnetServer(ByteStream):
         self._msg_stream_buff = BufferedByteReceiveStream(msg_stream_consumer)
         self._machine = TelnetMachine()
         self._machine.register_event_cb(self._receive_event)
+        self._machine.register_receive_cb(self._receive_data)
+        self._machine.register_send_cb(self._send_data)
 
     @asynccontextmanager
     async def _make_ctx(self) -> "AsyncIterator[AnyioTelnetServer]":
@@ -42,15 +44,18 @@ class AnyioTelnetServer(ByteStream):
     ) -> None:
         await self._ctx.__aexit__(exc_type, exc_value, traceback)
 
-    def _receive_event(self, event: Event) -> None:
-        if isinstance(event, ReceiveMessage):
-            self._msg_stream_producer.send_nowait(event.contents)
-        elif isinstance(event, SendData):
-            self._task_group.start_soon(self._stream.send, event.contents)
-
     async def _receive_worker(self) -> None:
         async for data in self._stream:
             self._machine.receive_data(data)
+
+    def _receive_event(self, event: Event) -> None:
+        print("received event", event)
+
+    def _receive_data(self, data: bytes) -> None:
+        self._msg_stream_producer.send_nowait(data)
+
+    def _send_data(self, data: bytes) -> None:
+        self._task_group.start_soon(self._stream.send, data)
 
     async def aclose(self) -> None:
         await self._msg_stream_buff.aclose()

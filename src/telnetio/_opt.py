@@ -2,7 +2,6 @@ from enum import Enum
 
 
 class Opt(int, Enum):
-    UNKNOWN = -1
     IAC = 255  # "Interpret As Command"
     DONT = 254
     DO = 253

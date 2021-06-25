@@ -1,10 +1,9 @@
-from ._machine import Command, Event, ReceiveMessage, SubCommand, TelnetMachine
+from ._machine import Command, Event, SubCommand, TelnetMachine
 from ._opt import Opt
 
 __all__ = [
     "Command",
     "Event",
-    "ReceiveMessage",
     "SubCommand",
     "TelnetMachine",
     "Opt",
