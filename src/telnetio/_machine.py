@@ -1,10 +1,13 @@
-from collections import UserList, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Callable, Dict, Generator, List, Optional, Union
+from typing import Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Union
 
 from ._opt import Opt
 
 StateCoroutine = Generator[None, int, None]
+BacklogItem = Union["Event", bytes]
+EventCallback = Callable[["Event"], Any]
+DataCallback = Callable[[bytes], Any]
 
 
 @dataclass
@@ -44,9 +47,15 @@ class SubCommand(Event):
         return bytes([self.cmd]) + self.opts
 
 
-class Backlog(UserList[Union[Event, bytes]]):
+class Backlog(Iterable[BacklogItem]):
     def __init__(self) -> None:
-        self.data: List[Union[Event, bytes]] = []
+        self.data: List[BacklogItem] = []
+
+    def __iter__(self) -> Iterator[BacklogItem]:
+        return iter(self.data)
+
+    def clear(self) -> None:
+        self.data.clear()
 
     def add_message(self, data: bytes) -> None:
         if not self.data or not isinstance(self.data[-1], bytes):
@@ -73,25 +82,25 @@ class TelnetMachine:
         next(self._state)  # prime
         self._next_state: Callable[[], StateCoroutine] = self._state_data
         self._backlog = Backlog()
-        self._event_callbacks: List[Callable[[Event], None]] = []
-        self._receive_callbacks: List[Callable[[bytes], None]] = []
-        self._send_callbacks: List[Callable[[bytes], None]] = []
+        self._event_callbacks: List[EventCallback] = []
+        self._receive_callbacks: List[DataCallback] = []
+        self._send_callbacks: List[DataCallback] = []
 
         self.options: Dict[Opt, TelnetOption] = defaultdict(TelnetOption)
 
-    def register_event_cb(self, callback: Callable[[Event], None]) -> None:
+    def register_event_cb(self, callback: EventCallback) -> None:
         """
         Register a callback for every event created.
         """
         self._event_callbacks.append(callback)
 
-    def register_receive_cb(self, callback: Callable[[bytes], None]) -> None:
+    def register_receive_cb(self, callback: DataCallback) -> None:
         """
         Register a callback for message data that was received.
         """
         self._receive_callbacks.append(callback)
 
-    def register_send_cb(self, callback: Callable[[bytes], None]) -> None:
+    def register_send_cb(self, callback: DataCallback) -> None:
         """
         Register a callback for raw data that needs to be sent.
         """

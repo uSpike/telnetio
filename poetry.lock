@@ -31,7 +31,7 @@ name = "async-generator"
 version = "1.10"
 description = "Async generators and context managers for Python 3.5+"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5"
 
 [[package]]
@@ -407,7 +407,7 @@ anyio = ["anyio"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "f55815179fe3e3d6185cc1483ae2d13fd3a79ce18a4892cd510371fee55cc225"
+content-hash = "d2b17b3a1d7e4a88e6c2d7809f766b9c39d379b5c27dc6816508b1e11de186ef"
 
 [metadata.files]
 anyio = [

@@ -1,5 +1,5 @@
 import math
-from contextlib import asynccontextmanager
+import sys
 from types import TracebackType
 from typing import AsyncIterator, Optional, Type
 
@@ -8,6 +8,11 @@ from anyio.abc import AnyByteStream, ByteStream, TaskGroup
 from anyio.streams.buffered import BufferedByteReceiveStream
 
 from ._machine import Event, TelnetMachine
+
+if sys.version_info >= (3, 7):
+    from contextlib import asynccontextmanager
+else:
+    from async_generator import asynccontextmanager
 
 
 class AnyioTelnetServer(ByteStream):
