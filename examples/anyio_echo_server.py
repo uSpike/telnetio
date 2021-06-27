@@ -8,8 +8,9 @@ from telnetio import AnyioTelnetServer
 
 
 async def handler(stream: AnyByteStream) -> None:
-    async with AnyioTelnetServer(stream) as telnet:
-        await telnet.send(b"foo")
+    async with stream, AnyioTelnetServer(stream) as telnet:
+        await telnet.send(b"Welcome to Zombocom!\r\n")
+        await telnet.send(b"You can do anything at Zombocom!\r\n")
         async for data in telnet:
             await telnet.send(data)
 

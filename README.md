@@ -4,7 +4,6 @@ telnetio
 A Sans-IO implementation of a telnet parser.
 
 Includes an `anyio` server implementation.  To install use the `anyio` extra, such as `pip install telnetio[anyio]`.
-An example echo server:
 
 ```python
 import anyio
@@ -13,7 +12,7 @@ from anyio.abc import AnyByteStream
 from telnetio import AnyioTelnetServer
 
 async def handler(stream: AnyByteStream) -> None:
-    async with AnyioTelnetServer(stream) as telnet:
+    async with stream, AnyioTelnetServer(stream) as telnet:
         async for data in telnet:
             await telnet.send(data)
 
@@ -23,3 +22,5 @@ async def main() -> None:
 
 anyio.run(main)
 ```
+
+See the `examples` directory for more examples.

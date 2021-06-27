@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Union
@@ -21,15 +22,16 @@ class TelnetOption:
     reply_pending: bool = False
 
 
-class Event:
-    def as_bytes(self) -> bytes:
-        raise NotImplementedError()
+class Event(ABC):
+    @abstractmethod
+    def as_bytes(self) -> bytes:  # pragma: nocover
+        ...
 
 
 @dataclass(frozen=True)
 class Command(Event):
     cmd: Opt
-    opt: Optional[Opt] = None  # only included for 3-byte commands
+    opt: Optional[int] = None  # only included for 3-byte commands
 
     def as_bytes(self) -> bytes:
         data = bytes([Opt.IAC, self.cmd])
@@ -70,8 +72,6 @@ class Backlog(Iterable[BacklogItem]):
 class TelnetMachine:
     """
     Sans-IO telnet state machine.
-
-    When an event occurs, `on_event` is called with that event as the sole argument.
     """
 
     #: List of IAC commands needing multiple (3) bytes
@@ -85,8 +85,6 @@ class TelnetMachine:
         self._event_callbacks: List[EventCallback] = []
         self._receive_callbacks: List[DataCallback] = []
         self._send_callbacks: List[DataCallback] = []
-
-        self.options: Dict[Opt, TelnetOption] = defaultdict(TelnetOption)
 
     def register_event_cb(self, callback: EventCallback) -> None:
         """
@@ -105,56 +103,6 @@ class TelnetMachine:
         Register a callback for raw data that needs to be sent.
         """
         self._send_callbacks.append(callback)
-
-    def on_event(self, event: Event) -> None:
-        if isinstance(event, Command):
-            if event.opt is None:
-                raise ValueError()
-            if event.cmd == Opt.DO:
-                return self.handle_do(event.opt)
-            elif event.cmd == Opt.DONT:
-                return self.handle_dont(event.opt)
-            elif event.cmd == Opt.WILL:
-                return self.handle_will(event.opt)
-            elif event.cmd == Opt.WONT:
-                return self.handle_wont(event.opt)
-
-    def check_local_option(self, option: Opt) -> bool:
-        return self.options[option].local_option or False
-
-    def check_remote_option(self, option: Opt) -> bool:
-        return self.options[option].remote_option or False
-
-    def handle_do(self, option: Opt) -> None:
-        self.options[option].reply_pending = False
-
-        if option == Opt.ECHO:
-            # DE requests us to echo their input
-            if not self.options[Opt.ECHO].local_option:
-                self.options[Opt.ECHO].local_option = True
-                self.send_command(Opt.WILL, Opt.ECHO)
-
-        elif option == Opt.BINARY:
-            # DE requests us to receive BINARY
-            if not self.options[Opt.BINARY].local_option:
-                self.options[Opt.BINARY].local_option = True
-                self.send_command(Opt.WILL, Opt.BINARY)
-
-        elif option == Opt.SGA:
-            # DE wants us to suppress go-ahead
-            if not self.options[Opt.SGA].local_option:
-                self.options[Opt.SGA].local_option = True
-                self.send_command(Opt.WILL, Opt.SGA)
-                self.send_command(Opt.DO, Opt.SGA)
-
-    def handle_dont(self, option: Opt) -> None:
-        pass
-
-    def handle_will(self, option: Opt) -> None:
-        pass
-
-    def handle_wont(self, option: Opt) -> None:
-        pass
 
     def receive_data(self, data: bytes) -> None:
         """
@@ -190,7 +138,7 @@ class TelnetMachine:
         data = data.replace(bytes([Opt.IAC]), bytes([Opt.IAC, Opt.IAC]))
         self.send(data)
 
-    def send_command(self, cmd: Opt, opt: Optional[Opt] = None) -> None:
+    def send_command(self, cmd: Opt, opt: Optional[int] = None) -> None:
         self.send(Command(cmd, opt).as_bytes())
 
     def _state_data(self) -> StateCoroutine:
@@ -209,7 +157,7 @@ class TelnetMachine:
         if cmd in self._iac_mbs:
             # These commands are 3-byte
             opt = yield
-            self._backlog.add_event(Command(Opt(cmd), Opt(opt)))
+            self._backlog.add_event(Command(Opt(cmd), opt))
         elif cmd == Opt.IAC:
             # escaped IAC
             self._backlog.add_message(bytes([Opt.IAC]))
@@ -228,7 +176,7 @@ class TelnetMachine:
                 opt = yield
                 if opt == Opt.SE:
                     if not buf:
-                        ValueError("SE: buffer empty")
+                        raise ValueError("SE: buffer empty")
                     if buf[0] == Opt.NULL:
                         raise ValueError("SE: buffer is NUL")
                     if len(buf) == 1:
@@ -242,3 +190,65 @@ class TelnetMachine:
                     buf.append(Opt.IAC)
             else:
                 buf.append(data)
+
+
+class TelnetClient:
+    def __init__(self, machine: TelnetMachine) -> None:
+        self._machine = machine
+        self._machine.register_event_cb(self.on_event)
+        self.options: Dict[int, TelnetOption] = defaultdict(TelnetOption)
+
+    def on_event(self, event: Event) -> None:
+        if isinstance(event, Command):
+            if event.opt is None:
+                raise ValueError()
+            if event.cmd == Opt.DO:
+                return self.handle_do(event.opt)
+            elif event.cmd == Opt.DONT:
+                return self.handle_dont(event.opt)
+            elif event.cmd == Opt.WILL:
+                return self.handle_will(event.opt)
+            elif event.cmd == Opt.WONT:
+                return self.handle_wont(event.opt)
+
+    def check_local_option(self, option: Opt) -> bool:
+        return self.options[option].local_option or False
+
+    def check_remote_option(self, option: Opt) -> bool:
+        return self.options[option].remote_option or False
+
+    def handle_do(self, option: int) -> None:
+        self.options[option].reply_pending = False
+
+        if option == Opt.ECHO:
+            # DE requests us to echo their input
+            if not self.options[Opt.ECHO].local_option:
+                self.options[Opt.ECHO].local_option = True
+                self._machine.send_command(Opt.WILL, Opt.ECHO)
+
+        elif option == Opt.BINARY:
+            # DE requests us to receive BINARY
+            if not self.options[Opt.BINARY].local_option:
+                self.options[Opt.BINARY].local_option = True
+                self._machine.send_command(Opt.WILL, Opt.BINARY)
+
+        elif option == Opt.SGA:
+            # DE wants us to suppress go-ahead
+            if not self.options[Opt.SGA].local_option:
+                self.options[Opt.SGA].local_option = True
+                self._machine.send_command(Opt.WILL, Opt.SGA)
+                self._machine.send_command(Opt.DO, Opt.SGA)
+
+    def handle_dont(self, option: int) -> None:
+        pass
+
+    def handle_will(self, option: int) -> None:
+        pass
+
+    def handle_wont(self, option: int) -> None:
+        pass
+
+
+class TelnetServer:
+    def __init__(self, machine: TelnetMachine) -> None:
+        self._machine = machine

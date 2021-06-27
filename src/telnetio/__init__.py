@@ -1,19 +1,24 @@
-from ._machine import Command, Event, SubCommand, TelnetMachine
+from ._machine import Command, Event, SubCommand, TelnetClient, TelnetMachine, TelnetServer
 from ._opt import Opt
 
 __all__ = [
     "Command",
     "Event",
     "SubCommand",
-    "TelnetMachine",
     "Opt",
+    "TelnetClient",
+    "TelnetMachine",
+    "TelnetServer",
 ]
 
 try:
     import anyio
-except ImportError:
+except ImportError:  # pragma: nocover
     pass
 else:
-    from ._anyio import AnyioTelnetServer
+    from ._anyio import AnyioTelnetClient, AnyioTelnetServer
 
-    __all__ += ["AnyioTelnetServer"]
+    __all__ += [
+        "AnyioTelnetClient",
+        "AnyioTelnetServer",
+    ]
