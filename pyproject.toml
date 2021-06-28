@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "telnetio"
-version = "0.1.0"
+version = "0.1.1"
 description = "Sans-IO telnet parser"
 authors = ["Jordan Speicher <jordan@jspeicher.com>"]
 license = "MIT"
+readme = "README.md"
 packages = [
     { include = "telnetio", from = "src" },
 ]
