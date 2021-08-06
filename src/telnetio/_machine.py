@@ -10,6 +10,10 @@ BacklogItem = Union["Event", bytes]
 EventCallback = Callable[["Event"], Any]
 DataCallback = Callable[[bytes], Any]
 
+NUL = 0
+LF = 10
+CR = 13
+
 
 @dataclass
 class TelnetOption:
@@ -150,10 +154,27 @@ class TelnetMachine:
     def _state_data(self) -> StateCoroutine:
         while True:
             char = yield
+
             if char == Opt.IAC:
                 self._next_state = self._state_iac
                 return
-            elif char != Opt.NULL:
+            elif char == CR:
+                char_after_cr = yield
+
+                if char_after_cr == LF:
+                    self._backlog.add_message(b"\n")
+                elif char_after_cr == NUL:
+                    self._backlog.add_message(b"\r")
+                elif char_after_cr == Opt.IAC:
+                    # IAC isn't allowed after \r according to the
+                    # RFC, but handling this way is less surprising than
+                    # delivering the IAC as normal data.
+                    self._backlog.add_message(b"\r")
+                    self._next_state = self._state_iac
+                    return
+                else:
+                    self._backlog.add_message(b"\r" + bytes([char_after_cr]))
+            else:
                 self._backlog.add_message(bytes([char]))
 
     def _state_iac(self) -> StateCoroutine:

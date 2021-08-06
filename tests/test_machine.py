@@ -44,6 +44,30 @@ def test_machine_receive() -> None:
     assert tn.received == [SubCommand(Opt.WILL, bytearray([Opt.ECHO]))]
 
 
+def test_machine_receive_newline_cr() -> None:
+    tn = Telnet()
+    tn.machine.receive_data(b"\r\0")
+    assert tn.received == [b"\r"]
+
+
+def test_machine_receive_newline_lf() -> None:
+    tn = Telnet()
+    tn.machine.receive_data(b"\r\n")
+    assert tn.received == [b"\n"]
+
+
+def test_machine_receive_newline_iac() -> None:
+    tn = Telnet()
+    tn.machine.receive_data(b"\r" + bytes([Opt.IAC, Opt.WILL, Opt.ECHO]))
+    assert tn.received == [b"\r", Command(Opt.WILL, Opt.ECHO)]
+
+
+def test_machine_receive_newline_data() -> None:
+    tn = Telnet()
+    tn.machine.receive_data(b"\r" + b"0123")
+    assert tn.received == [b"\r0123"]
+
+
 def test_machine_sb_empty() -> None:
     tn = Telnet()
     with pytest.raises(ValueError, match="SE: buffer empty"):
