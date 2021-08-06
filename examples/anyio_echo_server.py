@@ -1,14 +1,18 @@
 """
 This is a simple telnet echo server on port 1234
 """
+import logging
+
 import anyio
 from anyio.abc import AnyByteStream
 
 from telnetio import AnyioTelnetServer
 
+LOG = logging.getLogger(__name__)
+
 
 async def handler(stream: AnyByteStream) -> None:
-    async with stream, AnyioTelnetServer(stream) as telnet:
+    async with stream, AnyioTelnetServer(stream, on_receive_error=LOG.exception) as telnet:
         await telnet.send(b"Welcome to Zombocom!\r\n")
         await telnet.send(b"You can do anything at Zombocom!\r\n")
         async for data in telnet:

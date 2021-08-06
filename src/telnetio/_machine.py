@@ -82,6 +82,7 @@ class TelnetMachine:
         next(self._state)  # prime
         self._next_state: Callable[[], StateCoroutine] = self._state_data
         self._backlog = Backlog()
+        self._leftover = bytearray()
         self._event_callbacks: List[EventCallback] = []
         self._receive_callbacks: List[DataCallback] = []
         self._send_callbacks: List[DataCallback] = []
@@ -108,12 +109,17 @@ class TelnetMachine:
         """
         Receive data from a stream into the state machine.
         """
-        for byte in data:
+        data = self._leftover + data
+        self._leftover.clear()
+        for idx, byte in enumerate(data):
             try:
                 self._state.send(byte)
             except StopIteration:
                 self._state = self._next_state()
                 next(self._state)  # prime
+            except:
+                self._leftover.extend(data[idx:])
+                raise
 
         for event_or_data in self._backlog:
             if isinstance(event_or_data, bytes):
@@ -196,7 +202,7 @@ class TelnetClient:
     def __init__(self, machine: TelnetMachine) -> None:
         self._machine = machine
         self._machine.register_event_cb(self.on_event)
-        self.options: Dict[int, TelnetOption] = defaultdict(TelnetOption)
+        self._options: Dict[int, TelnetOption] = defaultdict(TelnetOption)
 
     def on_event(self, event: Event) -> None:
         if isinstance(event, Command):
@@ -212,30 +218,30 @@ class TelnetClient:
                 return self.handle_wont(event.opt)
 
     def check_local_option(self, option: Opt) -> bool:
-        return self.options[option].local_option or False
+        return self._options[option].local_option or False
 
     def check_remote_option(self, option: Opt) -> bool:
-        return self.options[option].remote_option or False
+        return self._options[option].remote_option or False
 
     def handle_do(self, option: int) -> None:
-        self.options[option].reply_pending = False
+        self._options[option].reply_pending = False
 
         if option == Opt.ECHO:
             # DE requests us to echo their input
-            if not self.options[Opt.ECHO].local_option:
-                self.options[Opt.ECHO].local_option = True
+            if not self._options[Opt.ECHO].local_option:
+                self._options[Opt.ECHO].local_option = True
                 self._machine.send_command(Opt.WILL, Opt.ECHO)
 
         elif option == Opt.BINARY:
             # DE requests us to receive BINARY
-            if not self.options[Opt.BINARY].local_option:
-                self.options[Opt.BINARY].local_option = True
+            if not self._options[Opt.BINARY].local_option:
+                self._options[Opt.BINARY].local_option = True
                 self._machine.send_command(Opt.WILL, Opt.BINARY)
 
         elif option == Opt.SGA:
             # DE wants us to suppress go-ahead
-            if not self.options[Opt.SGA].local_option:
-                self.options[Opt.SGA].local_option = True
+            if not self._options[Opt.SGA].local_option:
+                self._options[Opt.SGA].local_option = True
                 self._machine.send_command(Opt.WILL, Opt.SGA)
                 self._machine.send_command(Opt.DO, Opt.SGA)
 
@@ -252,3 +258,4 @@ class TelnetClient:
 class TelnetServer:
     def __init__(self, machine: TelnetMachine) -> None:
         self._machine = machine
+        self._options: Dict[int, TelnetOption] = defaultdict(TelnetOption)

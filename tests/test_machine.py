@@ -55,11 +55,17 @@ def test_machine_sb_null() -> None:
     with pytest.raises(ValueError, match="SE: buffer is NUL"):
         tn.machine.receive_data(bytes([Opt.IAC, Opt.SB, 0, Opt.IAC, Opt.SE]))
 
+    tn.machine.receive_data(b"1234")
+    assert tn.received == [b"1234"]
+
 
 def test_machine_sb_too_short() -> None:
     tn = Telnet()
     with pytest.raises(ValueError, match="SE: buffer too short"):
         tn.machine.receive_data(bytes([Opt.IAC, Opt.SB, 1, Opt.IAC, Opt.SE]))
+
+    tn.machine.receive_data(b"1234")
+    assert tn.received == [b"1234"]
 
 
 def test_machine_sb_escaped_iac() -> None:

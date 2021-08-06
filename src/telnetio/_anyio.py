@@ -1,13 +1,13 @@
 import math
 import sys
 from types import TracebackType
-from typing import AsyncIterator, Optional, Type, TypeVar
+from typing import Any, AsyncIterator, Callable, Optional, Type, TypeVar
 
 import anyio
 from anyio.abc import AnyByteStream, ByteStream, TaskGroup
 from anyio.streams.buffered import BufferedByteReceiveStream
 
-from ._machine import Event, TelnetClient, TelnetMachine, TelnetServer
+from ._machine import TelnetClient, TelnetMachine, TelnetServer
 
 if sys.version_info >= (3, 7):
     from contextlib import asynccontextmanager
@@ -20,14 +20,15 @@ T = TypeVar("T", bound="_AnyioTelnet")
 class _AnyioTelnet(ByteStream):
     _task_group: TaskGroup
 
-    def __init__(self, stream: AnyByteStream) -> None:
+    def __init__(self, stream: AnyByteStream, on_receive_error: Optional[Callable[[Exception], Any]] = None) -> None:
         self._stream = stream
+        self._on_receive_error = on_receive_error
+
         msg_stream_producer, msg_stream_consumer = anyio.create_memory_object_stream(math.inf, item_type=bytes)
         self._msg_stream_buff = BufferedByteReceiveStream(msg_stream_consumer)
         send_producer, self._send_consumer = anyio.create_memory_object_stream(math.inf, item_type=bytes)
 
         self._machine = TelnetMachine()
-        self._machine.register_event_cb(self._receive_event)
         self._machine.register_receive_cb(msg_stream_producer.send_nowait)
         self._machine.register_send_cb(send_producer.send_nowait)
 
@@ -53,14 +54,17 @@ class _AnyioTelnet(ByteStream):
 
     async def _receive_worker(self) -> None:
         async for data in self._stream:
-            self._machine.receive_data(data)
+            try:
+                self._machine.receive_data(data)
+            except Exception as exc:
+                if self._on_receive_error is not None:
+                    self._on_receive_error(exc)
+                else:
+                    raise
 
     async def _send_worker(self) -> None:
         async for data in self._send_consumer:
             await self._stream.send(data)
-
-    def _receive_event(self, event: Event) -> None:
-        print("received event", event)
 
     async def aclose(self) -> None:
         await self._msg_stream_buff.aclose()
@@ -76,12 +80,12 @@ class _AnyioTelnet(ByteStream):
 
 
 class AnyioTelnetServer(_AnyioTelnet):
-    def __init__(self, stream: AnyByteStream) -> None:
-        super().__init__(stream)
+    def __init__(self, stream: AnyByteStream, *args: Any, **kwargs: Any) -> None:
+        super().__init__(stream, *args, **kwargs)
         self._server = TelnetServer(self._machine)
 
 
 class AnyioTelnetClient(_AnyioTelnet):
-    def __init__(self, stream: AnyByteStream) -> None:
-        super().__init__(stream)
+    def __init__(self, stream: AnyByteStream, *args: Any, **kwargs: Any) -> None:
+        super().__init__(stream, *args, **kwargs)
         self._client = TelnetClient(self._machine)
