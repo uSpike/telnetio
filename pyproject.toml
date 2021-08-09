@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "telnetio"
-version = "0.2.1"
+version = "0.2.2"
 description = "Sans-IO telnet parser"
 authors = ["Jordan Speicher <jordan@jspeicher.com>"]
 license = "MIT"
