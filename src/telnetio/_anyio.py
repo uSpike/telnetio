@@ -8,6 +8,7 @@ from anyio.abc import AnyByteStream, ByteStream, TaskGroup
 from anyio.streams.buffered import BufferedByteReceiveStream
 
 from ._machine import TelnetClient, TelnetMachine, TelnetServer
+from ._opt import Opt
 
 if sys.version_info >= (3, 7):
     from contextlib import asynccontextmanager
@@ -82,6 +83,9 @@ class _AnyioTelnet(ByteStream):
 
     async def send(self, data: bytes) -> None:
         self._machine.send_message(data)
+
+    async def send_command(self, cmd: Opt, opt: Optional[Opt] = None) -> None:
+        self._machine.send_command(cmd, opt)
 
 
 class AnyioTelnetServer(_AnyioTelnet):
