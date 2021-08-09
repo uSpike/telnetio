@@ -27,3 +27,5 @@ class Opt(int, Enum):
     SGA = 3  # suppress go ahead
     NAMS = 4  # approximate message size
     STATUS = 5  # give status
+
+    LINEMODE = 34
