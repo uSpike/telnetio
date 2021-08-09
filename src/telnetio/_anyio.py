@@ -24,12 +24,12 @@ class _AnyioTelnet(ByteStream):
         self._stream = stream
         self._on_receive_error = on_receive_error
 
-        msg_stream_producer, msg_stream_consumer = anyio.create_memory_object_stream(math.inf, item_type=bytes)
+        self._msg_stream_producer, msg_stream_consumer = anyio.create_memory_object_stream(math.inf, item_type=bytes)
         self._msg_stream_buff = BufferedByteReceiveStream(msg_stream_consumer)
         send_producer, self._send_consumer = anyio.create_memory_object_stream(math.inf, item_type=bytes)
 
         self._machine = TelnetMachine()
-        self._machine.register_receive_cb(msg_stream_producer.send_nowait)
+        self._machine.register_receive_cb(self._msg_stream_producer.send_nowait)
         self._machine.register_send_cb(send_producer.send_nowait)
 
     @asynccontextmanager
@@ -53,21 +53,26 @@ class _AnyioTelnet(ByteStream):
         await self._ctx.__aexit__(exc_type, exc, tb)
 
     async def _receive_worker(self) -> None:
-        async for data in self._stream:
-            try:
-                self._machine.receive_data(data)
-            except Exception as exc:
-                if self._on_receive_error is not None:
-                    self._on_receive_error(exc)
-                else:
+        try:
+            async for data in self._stream:
+                try:
+                    self._machine.receive_data(data)
+                except anyio.get_cancelled_exc_class():
                     raise
+                except Exception as exc:
+                    if self._on_receive_error is not None:
+                        self._on_receive_error(exc)
+                    else:
+                        raise
+        finally:
+            await self.aclose()
 
     async def _send_worker(self) -> None:
         async for data in self._send_consumer:
             await self._stream.send(data)
 
     async def aclose(self) -> None:
-        await self._msg_stream_buff.aclose()
+        await self._msg_stream_producer.aclose()
 
     async def send_eof(self) -> None:
         await self._stream.send_eof()
