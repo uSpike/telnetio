@@ -6,6 +6,9 @@ authors = ["Jordan Speicher <jordan@jspeicher.com>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/uSpike/telnetio"
+classifiers = [
+    "Framework :: AnyIO"
+]
 packages = [
     { include = "telnetio", from = "src" },
 ]
