@@ -1,121 +1,116 @@
-from typing import List, Union
-
-import pytest
-
-from telnetio import Command, Event, Opt, SubCommand, TelnetMachine
-
-
-class Telnet:
-    def __init__(self) -> None:
-        self.machine = TelnetMachine()
-        self.received: List[Union[Event, bytes]] = []
-        self.send = bytearray()
-        self.machine.register_event_cb(self.received.append)
-        self.machine.register_receive_cb(self.received.append)
-        self.machine.register_send_cb(self.send.extend)
-
-    def clear(self) -> None:
-        self.received.clear()
-        self.send.clear()
+from telnetio import Command, Data, Error, ErrorKind, SubCommand, TelnetMachine, opt
 
 
 def test_machine_receive() -> None:
-    tn = Telnet()
-    tn.machine.receive_data(b"01234")
-    assert tn.received == [b"01234"]
-    tn.clear()
+    tn = TelnetMachine()
+    assert tn.receive_data(b"0123") == [Data(b"0"), Data(b"1"), Data(b"2"), Data(b"3")]
 
-    tn.machine.receive_data(b"0123\xff")
-    assert tn.received == [b"0123"]
 
-    tn.machine.receive_data(b"\xff")
-    assert tn.received == [b"0123", b"\xff"]
-    tn.clear()
+def test_machine_receive_escaped_iac() -> None:
+    tn = TelnetMachine()
+    assert tn.receive_data(b"01\xff\xff23") == [Data(b"0"), Data(b"1"), Data(b"\xff"), Data(b"2"), Data(b"3")]
 
-    tn.machine.receive_data(b"foo" + bytes([Opt.IAC, Opt.WILL, Opt.ECHO]) + b"bar")
-    assert tn.received == [b"foo", Command(Opt.WILL, Opt.ECHO), b"bar"]
-    tn.clear()
 
-    tn.machine.receive_data(bytes([Opt.IAC, Opt.IP]))
-    assert tn.received == [Command(Opt.IP)]
-    tn.clear()
+def test_machine_receive_negotation_3_byte() -> None:
+    tn = TelnetMachine()
+    assert tn.receive_data(b"foo" + bytes([opt.IAC, opt.WILL, opt.ECHO]) + b"bar") == [
+        Data(b"f"),
+        Data(b"o"),
+        Data(b"o"),
+        Command(opt.WILL, opt.ECHO),
+        Data(b"b"),
+        Data(b"a"),
+        Data(b"r"),
+    ]
 
-    tn.machine.receive_data(bytes([Opt.IAC, Opt.SB, Opt.WILL, Opt.ECHO, Opt.IAC, Opt.SE]))
-    assert tn.received == [SubCommand(Opt.WILL, bytearray([Opt.ECHO]))]
+
+def test_machine_receive_command() -> None:
+    tn = TelnetMachine()
+    assert tn.receive_data(bytes([opt.IAC, opt.IP])) == [Command(opt.IP)]
+
+
+def test_machine_receive_subnegotiation() -> None:
+    tn = TelnetMachine()
+    assert tn.receive_data(bytes([opt.IAC, opt.SB, opt.WILL, opt.ECHO, opt.IAC, opt.SE])) == [
+        SubCommand(opt.WILL, bytearray([opt.ECHO]))
+    ]
 
 
 def test_machine_receive_newline_cr() -> None:
-    tn = Telnet()
-    tn.machine.receive_data(b"\r\0")
-    assert tn.received == [b"\r"]
+    tn = TelnetMachine()
+    assert tn.receive_data(b"\r\0") == [Data(b"\r")]
 
 
 def test_machine_receive_newline_lf() -> None:
-    tn = Telnet()
-    tn.machine.receive_data(b"\r\n")
-    assert tn.received == [b"\n"]
+    tn = TelnetMachine()
+    assert tn.receive_data(b"\r\n") == [Data(b"\n")]
 
 
 def test_machine_receive_newline_iac() -> None:
-    tn = Telnet()
-    tn.machine.receive_data(b"\r" + bytes([Opt.IAC, Opt.WILL, Opt.ECHO]))
-    assert tn.received == [b"\r", Command(Opt.WILL, Opt.ECHO)]
+    tn = TelnetMachine()
+    assert tn.receive_data(b"\r" + bytes([opt.IAC, opt.WILL, opt.ECHO])) == [
+        Data(b"\r"),
+        Command(opt.WILL, opt.ECHO),
+    ]
 
 
 def test_machine_receive_newline_data() -> None:
-    tn = Telnet()
-    tn.machine.receive_data(b"\r" + b"0123")
-    assert tn.received == [b"\r0123"]
+    tn = TelnetMachine()
+    assert tn.receive_data(b"\r" + b"0123") == [Data(b"\r0"), Data(b"1"), Data(b"2"), Data(b"3")]
 
 
 def test_machine_sb_empty() -> None:
-    tn = Telnet()
-    with pytest.raises(ValueError, match="SE: buffer empty"):
-        tn.machine.receive_data(bytes([Opt.IAC, Opt.SB, Opt.IAC, Opt.SE]))
+    tn = TelnetMachine()
+    assert tn.receive_data(bytes([opt.IAC, opt.SB, opt.IAC, opt.SE])) == [Error(ErrorKind.SE_BUFFER_EMPTY)]
 
 
 def test_machine_sb_null() -> None:
-    tn = Telnet()
-    with pytest.raises(ValueError, match="SE: buffer is NUL"):
-        tn.machine.receive_data(bytes([Opt.IAC, Opt.SB, 0, Opt.IAC, Opt.SE]))
-
-    tn.machine.receive_data(b"1234")
-    assert tn.received == [b"1234"]
+    tn = TelnetMachine()
+    assert tn.receive_data(bytes([opt.IAC, opt.SB, 0, opt.IAC, opt.SE])) == [Error(ErrorKind.SE_BUFFER_NUL)]
+    assert tn.receive_data(b"1234") == [Data(b"1"), Data(b"2"), Data(b"3"), Data(b"4")]
 
 
 def test_machine_sb_too_short() -> None:
-    tn = Telnet()
-    with pytest.raises(ValueError, match="SE: buffer too short"):
-        tn.machine.receive_data(bytes([Opt.IAC, Opt.SB, 1, Opt.IAC, Opt.SE]))
-
-    tn.machine.receive_data(b"1234")
-    assert tn.received == [b"1234"]
+    tn = TelnetMachine()
+    assert tn.receive_data(bytes([opt.IAC, opt.SB, 1, opt.IAC, opt.SE])) == [
+        Error(ErrorKind.SE_BUFFER_TOO_SHORT, data=bytes([1]))
+    ]
+    assert tn.receive_data(b"1234") == [Data(b"1"), Data(b"2"), Data(b"3"), Data(b"4")]
 
 
 def test_machine_sb_escaped_iac() -> None:
-    tn = Telnet()
-    tn.machine.receive_data(bytes([Opt.IAC, Opt.SB, Opt.WILL, Opt.IAC, Opt.IAC, Opt.IAC, Opt.SE]))
-    assert tn.received == [SubCommand(Opt.WILL, bytearray([Opt.IAC]))]
+    tn = TelnetMachine()
+    assert tn.receive_data(bytes([opt.IAC, opt.SB, opt.WILL, opt.IAC, opt.IAC, opt.IAC, opt.SE])) == [
+        SubCommand(opt.WILL, bytearray([opt.IAC]))
+    ]
+
+
+def test_machine_sb_invalid() -> None:
+    tn = TelnetMachine()
+    assert tn.receive_data(bytes([opt.IAC, opt.SB, opt.WILL, opt.IAC, 0])) == [
+        Error(ErrorKind.SB_INVALID, data=bytes([0]))
+    ]
 
 
 def test_machine_send() -> None:
-    tn = Telnet()
-    tn.machine.send_message(b"01234")
-    assert tn.send == b"01234"
-    tn.machine.send_message(b"56")
-    assert tn.send == b"0123456"
+    tn = TelnetMachine()
+    assert tn.send_message(b"01234") == b"01234"
+    assert tn.send_message(b"56") == b"56"
 
 
 def test_machine_send_command() -> None:
-    tn = Telnet()
-    tn.machine.send_command(Opt.WILL, Opt.ECHO)
-    assert tn.send == bytes([Opt.IAC, Opt.WILL, Opt.ECHO])
+    tn = TelnetMachine()
+    assert tn.send_command(opt.WILL, opt.ECHO) == bytes([opt.IAC, opt.WILL, opt.ECHO])
+
+
+def test_data_to_bytes() -> None:
+    assert Data(b"0").as_bytes() == b"0"
 
 
 def test_command_to_bytes() -> None:
-    assert Command(Opt.SB).as_bytes() == bytes([Opt.IAC, Opt.SB])
-    assert Command(Opt.WILL, Opt.ECHO).as_bytes() == bytes([Opt.IAC, Opt.WILL, Opt.ECHO])
+    assert Command(opt.SB).as_bytes() == bytes([opt.IAC, opt.SB])
+    assert Command(opt.WILL, opt.ECHO).as_bytes() == bytes([opt.IAC, opt.WILL, opt.ECHO])
 
 
 def test_subcommand_to_bytes() -> None:
-    assert SubCommand(Opt.WILL, bytearray([Opt.ECHO])).as_bytes() == bytearray([Opt.WILL, Opt.ECHO])
+    assert SubCommand(opt.WILL, bytearray([opt.ECHO])).as_bytes() == bytearray([opt.WILL, opt.ECHO])

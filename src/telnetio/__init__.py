@@ -1,11 +1,12 @@
-from ._machine import Command, Event, SubCommand, TelnetClient, TelnetMachine, TelnetServer
-from ._opt import Opt
+from ._machine import Command, Data, Error, ErrorKind, Event, SubCommand, TelnetClient, TelnetMachine, TelnetServer
 
 __all__ = [
     "Command",
+    "Data",
+    "Error",
+    "ErrorKind",
     "Event",
     "SubCommand",
-    "Opt",
     "TelnetClient",
     "TelnetMachine",
     "TelnetServer",
