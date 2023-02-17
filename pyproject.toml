@@ -18,6 +18,7 @@ python = "^3.7"
 anyio = {version = "^3", optional = true}
 
 [tool.poetry.dev-dependencies]
+anyio = "^3.6"
 pytest = "^7.1"
 mypy = "^0.960"
 pre-commit = "^2.17"
