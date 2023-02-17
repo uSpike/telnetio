@@ -19,10 +19,10 @@ anyio = {version = "^3", optional = true}
 
 [tool.poetry.dev-dependencies]
 anyio = "^3.6"
-pytest = "^7.1"
-mypy = "^0.960"
+pytest = "^7.2"
+mypy = "^1.0"
 pre-commit = "^2.17"
-pytest-cov = "^3.0"
+pytest-cov = "^4.0"
 
 [tool.poetry.extras]
 anyio = ["anyio", "async_generator"]
