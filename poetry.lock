@@ -605,4 +605,4 @@ anyio = ["anyio"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7"
-content-hash = "794686c5b50e515b9f920248295765b3d064d4cc51bb55b07d558b4df124b4a5"
+content-hash = "8877476965eee583ad68a5f78bea431d7d638d823ebc6e755fc3e54c56c10a71"
