@@ -15,10 +15,10 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
-anyio = {version = "^3", optional = true}
+anyio = {version = "^4.0.0", optional = true}
 
 [tool.poetry.dev-dependencies]
-anyio = "^3.6"
+anyio = "^4.0.0"
 pytest = "^7.2"
 mypy = "^1.0"
 pytest-cov = "^4.0"
