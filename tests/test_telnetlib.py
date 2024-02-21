@@ -25,8 +25,7 @@ tl = telnetlib
 
 
 class HasFileno(Protocol):
-    def fileno(self) -> int:
-        ...
+    def fileno(self) -> int: ...
 
 
 def server(evt: threading.Event, sock: socket.socket) -> None:
