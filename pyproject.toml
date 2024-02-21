@@ -30,6 +30,7 @@ anyio = ["anyio"]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+
 [tool.mypy]
 python_version = "3.9"
 strict = true
@@ -55,32 +56,34 @@ exclude = '''
 )/
 '''
 
+[tool.ruff]
+line-length = 120
+target-version = "py37"
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # pyflakes
+    "F",
+    # bugbear
+    "B",
+]
+ignore = [
+    # loop control variable not used in body
+    "B007",
+    # redefinition of variable name in new scope
+    "F823"
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+docstring-code-format = true
+
 [tool.isort]
 profile = "black"
 line_length = 120
-
-[tool.flakeheaven]
-format = "colored"
-show_source = true
-max_line_length = 120
-
-[tool.flakeheaven.plugins]
-# Ignore redefinition of variable name in new scope
-pyflakes = ["+*", "-F823"]
-flake8-bandit = ["+*"]
-flake8-bugbear = ["+*"]
-flake8-builtins = ["+*"]
-flake8-comprehensions = ["+*"]
-flake8-darglint = ["+*"]
-flake8-docstrings = ["+*"]
-flake8-eradicate = ["+*"]
-flake8-mutable = ["+*"]
-flake8-pytest-style = ["+*"]
-flake8-spellcheck = ["+*"]
-
-[tool.flakeheaven.exceptions."**/__init__.py"]
-# Ignore unused imports in __init__.py files
-pyflakes = ["-F401"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
