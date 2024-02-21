@@ -80,7 +80,7 @@ class TestGeneral:
         finally:
             socket.setdefaulttimeout(None)
         assert telnet.sock is not None
-        telnet.sock.gettimeout() == 30
+        assert telnet.sock.gettimeout() == 30
         telnet.close()
 
     def testTimeoutNone(self, sock_tuple: Tuple[str, int]) -> None:
@@ -114,7 +114,7 @@ class TestGeneral:
         t_sock = telnet.sock
         assert t_sock is not None
         assert telnet.get_socket() == t_sock
-        telnet.fileno() == t_sock.fileno()
+        assert telnet.fileno() == t_sock.fileno()
         telnet.close()
 
 
