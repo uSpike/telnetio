@@ -31,10 +31,13 @@ repos:
     hooks:
       - id: black
 
-  - repo: https://github.com/flakeheaven/flakeheaven
-    rev: 3.3.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.2
     hooks:
-      - id: flakeheaven
+      - id: ruff
+        args: [ --fix ]
+      # remove black before enabling
+      #- id: ruff-format
 
   # Run mypy locally to reuse poetry dev environment
   - repo: local
