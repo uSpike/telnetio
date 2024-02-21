@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 try:
-    import anyio
+    import anyio  # noqa
 except ImportError:  # pragma: nocover
     pass
 else:
