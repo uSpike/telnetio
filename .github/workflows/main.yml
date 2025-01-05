@@ -85,6 +85,6 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install --no-interaction -E anyio
 
-      - run: pip install pre-commit==3.0.4
+      - run: pip install pre-commit==4.0.1
       - run: pre-commit install-hooks
       - run: pre-commit run -a
