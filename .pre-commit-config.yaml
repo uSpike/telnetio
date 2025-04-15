@@ -27,7 +27,7 @@ repos:
         types: ["cython"]
 
   - repo: https://github.com/ambv/black
-    rev: 24.4.2
+    rev: 24.10.0
     hooks:
       - id: black
 
