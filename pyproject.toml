@@ -14,7 +14,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4"
+python = ">=3.10"
 anyio = {version = "^4", optional = true}
 
 [tool.poetry.dev-dependencies]
