@@ -32,33 +32,14 @@ build-backend = "poetry.core.masonry.api"
 
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 strict = true
 show_column_numbers = true
 show_error_codes = true
 
-[tool.black]
-line-length = 120
-target-version = ['py39']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
-
 [tool.ruff]
 line-length = 120
-target-version = "py37"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
@@ -68,6 +49,12 @@ select = [
     "F",
     # bugbear
     "B",
+    # isort
+    "I",
+    # pyupgrade
+    "UP",
+    # flake8-type-checking
+    "TC",
 ]
 ignore = [
     # loop control variable not used in body
@@ -78,12 +65,9 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "double"
-indent-style = "tab"
+indent-style = "space"
 docstring-code-format = true
-
-[tool.isort]
-profile = "black"
-line_length = 120
+line-ending = "lf"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
