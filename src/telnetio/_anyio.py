@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from anyio.abc import AnyByteStream, ByteStream
 
@@ -46,7 +46,7 @@ class _AnyioTelnet(ByteStream):
         data = self._machine.send_message(data)
         await self._stream.send(data)
 
-    async def send_command(self, cmd: int, opt: Optional[int] = None) -> None:
+    async def send_command(self, cmd: int, opt: int | None = None) -> None:
         data = self._machine.send_command(cmd, opt)
         await self._stream.send(data)
 

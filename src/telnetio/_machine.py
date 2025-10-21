@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Dict, List, Optional
 
 from telnetio import opt
 
@@ -17,8 +16,8 @@ class TelnetOption:
     Tracks the status of telnet options
     """
 
-    local_option: Optional[bool] = None
-    remote_option: Optional[bool] = None
+    local_option: bool | None = None
+    remote_option: bool | None = None
     reply_pending: bool = False
 
 
@@ -75,7 +74,7 @@ class Data(Event):
 @dataclass(frozen=True)
 class Command(Event):
     cmd: int
-    opt: Optional[int] = None  # only included for 3-byte commands
+    opt: int | None = None  # only included for 3-byte commands
 
     def as_bytes(self) -> bytes:
         data = bytes([opt.IAC, self.cmd])
@@ -105,15 +104,15 @@ class TelnetMachine:
         self._state = State.DATA
         self._buffer = bytearray()
 
-    def receive_data(self, data: bytes) -> List[Event]:
-        out: List[Event] = []
+    def receive_data(self, data: bytes) -> list[Event]:
+        out: list[Event] = []
         for char in data:
             event = self._receive_byte(char)
             if event is not None:
                 out.append(event)
         return out
 
-    def _receive_byte(self, char: int) -> Optional[Event]:
+    def _receive_byte(self, char: int) -> Event | None:
         """
         Receive data from a stream into the state machine.
         """
@@ -230,14 +229,14 @@ class TelnetMachine:
         """
         return data.replace(bytes([opt.IAC]), bytes([opt.IAC, opt.IAC]))
 
-    def send_command(self, cmd: int, opt: Optional[int] = None) -> bytes:
+    def send_command(self, cmd: int, opt: int | None = None) -> bytes:
         return Command(cmd, opt).as_bytes()
 
 
 class TelnetClient:
     def __init__(self, machine: TelnetMachine) -> None:
         self._machine = machine
-        self._options: Dict[int, TelnetOption] = defaultdict(TelnetOption)
+        self._options: dict[int, TelnetOption] = defaultdict(TelnetOption)
 
     def on_event(self, event: Event) -> None:
         if isinstance(event, Command):
@@ -293,4 +292,4 @@ class TelnetClient:
 class TelnetServer:
     def __init__(self, machine: TelnetMachine) -> None:
         self._machine = machine
-        self._options: Dict[int, TelnetOption] = defaultdict(TelnetOption)
+        self._options: dict[int, TelnetOption] = defaultdict(TelnetOption)
