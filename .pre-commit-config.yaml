@@ -17,27 +17,14 @@ repos:
       - id: trailing-whitespace
         args: ["--markdown-linebreak-ext=md"]
 
-  - repo: https://github.com/pycqa/isort
-    rev: 7.0.0
-    hooks:
-      - id: isort
-        name: isort (python)
-      - id: isort
-        name: isort (cython)
-        types: ["cython"]
-
-  - repo: https://github.com/ambv/black
-    rev: 24.4.2
-    hooks:
-      - id: black
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.2
+    rev: v0.14.1
     hooks:
-      - id: ruff
-        args: [ --fix ]
-      # remove black before enabling
-      #- id: ruff-format
+      - id: ruff-check
+        types_or: ["python", "pyi"]
+        args: ["--fix", "--exit-non-zero-on-fix"]
+      - id: ruff-format
+        types_or: ["python", "pyi"]
 
   # Run mypy locally to reuse poetry dev environment
   - repo: local

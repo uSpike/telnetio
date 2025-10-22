@@ -18,8 +18,8 @@ Compatibility is only guaranteed for documented methods and attributes.
 Example:
 
     >>> from telnetio.telnetlib import Telnet
-    >>> tn = Telnet('www.python.org', 79)   # connect to finger port
-    >>> tn.write(b'guido\r\n')
+    >>> tn = Telnet("www.python.org", 79)  # connect to finger port
+    >>> tn.write(b"guido\r\n")
     >>> print(tn.read_all())
     Login       Name               TTY         Idle    When    Where
     guido    Guido van Rossum      pts/2        <Dec  2 11:10> snag.cnri.reston..
@@ -43,11 +43,14 @@ import socket
 import sys
 from re import Match, Pattern
 from time import monotonic
-from types import TracebackType
-from typing import Any, Callable, Optional, Sequence, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from . import opt
 from ._machine import Command, Data, Error, ErrorKind, SubCommand, TelnetMachine
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+    from types import TracebackType
 
 __all__ = ["Telnet"]
 
@@ -148,7 +151,7 @@ NOOPT = bytes([opt.NULL])
 
 # poll/select have the advantage of not requiring any extra file descriptor,
 # contrarily to epoll/kqueue (also, they require a single syscall).
-_TelnetSelector: Type[selectors.BaseSelector]
+_TelnetSelector: type[selectors.BaseSelector]
 
 if hasattr(selectors, "PollSelector"):
     _TelnetSelector = selectors.PollSelector
@@ -209,24 +212,22 @@ class Telnet:
         No other action is done afterwards by telnetlib.
     """
 
-    def __init__(
-        self, host: Optional[str] = None, port: Union[int, str] = 0, timeout: Optional[float] = _DEFAULT_TIMEOUT
-    ) -> None:
+    def __init__(self, host: str | None = None, port: int | str = 0, timeout: float | None = _DEFAULT_TIMEOUT) -> None:
         self.host = host
         self.port = int(port)
         self.timeout = timeout
         self._machine = TelnetMachine()
-        self.sock: Optional[socket.socket] = None
+        self.sock: socket.socket | None = None
         self.eof = 0
         self.debuglevel = DEBUGLEVEL
-        self.option_callback: Optional[Callable[[socket.socket, bytes, bytes], object]] = None
+        self.option_callback: Callable[[socket.socket, bytes, bytes], object] | None = None
         self.cookedq = b""
         self.sbdataq = b""
 
         if self.host is not None:
             self.open(self.host, self.port, self.timeout)
 
-    def open(self, host: str, port: int = 0, timeout: Optional[float] = _DEFAULT_TIMEOUT) -> None:
+    def open(self, host: str, port: int = 0, timeout: float | None = _DEFAULT_TIMEOUT) -> None:
         """Connect to a host.
 
         The optional second argument is the port number, which
@@ -302,7 +303,7 @@ class Telnet:
         self.msg(f"send {buffer!r}")
         self.sock.sendall(buffer)
 
-    def read_until(self, match: bytes, timeout: Optional[float] = None) -> bytes:
+    def read_until(self, match: bytes, timeout: float | None = None) -> bytes:
         """Read until a given string is encountered or until timeout.
 
         When no match is found, return whatever is available instead,
@@ -310,7 +311,7 @@ class Telnet:
         is closed and no cooked data is available.
         """
 
-        def _do_match(start: Optional[int]) -> Optional[bytes]:
+        def _do_match(start: int | None) -> bytes | None:
             i = self.cookedq.find(match, start)
             if i >= 0:
                 i += len(match)
@@ -422,9 +423,7 @@ class Telnet:
         self.sbdataq = b""
         return buf
 
-    def set_option_negotiation_callback(
-        self, callback: Optional[Callable[[socket.socket, bytes, bytes], object]]
-    ) -> None:
+    def set_option_negotiation_callback(self, callback: Callable[[socket.socket, bytes, bytes], object] | None) -> None:
         """Provide a callback function called after each receipt of a telnet option."""
         self.option_callback = callback
 
@@ -489,8 +488,8 @@ class Telnet:
                 sys.stdout.flush()
 
     def expect(
-        self, list: Sequence[Union[Pattern[bytes], bytes]], timeout: Optional[float] = None
-    ) -> tuple[int, Optional[Match[bytes]], bytes]:
+        self, list: Sequence[Pattern[bytes] | bytes], timeout: float | None = None
+    ) -> tuple[int, Match[bytes] | None, bytes]:
         """Read until one from a list of a regular expressions matches.
 
         The first argument is a list of regular expressions, either
@@ -545,7 +544,7 @@ class Telnet:
         return self
 
     def __exit__(
-        self, type: Optional[type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]
+        self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None:
         self.close()
 

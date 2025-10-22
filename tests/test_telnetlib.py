@@ -2,20 +2,10 @@ import contextlib
 import re
 import selectors
 import socket
-import sys
 import threading
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import closing
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
-
-if sys.version_info < (3, 9):
-    from typing import Iterator, Sequence
-else:
-    from collections.abc import Iterator, Sequence
+from typing import Any, Protocol
 
 import pytest
 
@@ -39,7 +29,7 @@ def server(evt: threading.Event, sock: socket.socket) -> None:
 
 class TestGeneral:
     @pytest.fixture(autouse=True)
-    def sock_tuple(self) -> Iterator[Tuple[str, int]]:
+    def sock_tuple(self) -> Iterator[tuple[str, int]]:
         evt = threading.Event()
 
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
@@ -57,12 +47,12 @@ class TestGeneral:
                 evt.set()
                 thread.join()
 
-    def testBasic(self, sock_tuple: Tuple[str, int]) -> None:
+    def testBasic(self, sock_tuple: tuple[str, int]) -> None:
         # connects
         telnet = telnetlib.Telnet(*sock_tuple)
         telnet.close()
 
-    def testContextManager(self, sock_tuple: Tuple[str, int]) -> None:
+    def testContextManager(self, sock_tuple: tuple[str, int]) -> None:
         with telnetlib.Telnet(*sock_tuple) as tn:
             assert tn.get_socket() is not None
 
@@ -72,7 +62,7 @@ class TestGeneral:
             # Therefore, this library will raise
             tn.get_socket()
 
-    def testTimeoutDefault(self, sock_tuple: Tuple[str, int]) -> None:
+    def testTimeoutDefault(self, sock_tuple: tuple[str, int]) -> None:
         assert socket.getdefaulttimeout() is None
         socket.setdefaulttimeout(30)
         try:
@@ -83,7 +73,7 @@ class TestGeneral:
         assert telnet.sock.gettimeout() == 30
         telnet.close()
 
-    def testTimeoutNone(self, sock_tuple: Tuple[str, int]) -> None:
+    def testTimeoutNone(self, sock_tuple: tuple[str, int]) -> None:
         # None, having other default
         assert socket.getdefaulttimeout() is None
         socket.setdefaulttimeout(30)
@@ -95,20 +85,20 @@ class TestGeneral:
         assert telnet.sock.gettimeout() is None
         telnet.close()
 
-    def testTimeoutValue(self, sock_tuple: Tuple[str, int]) -> None:
+    def testTimeoutValue(self, sock_tuple: tuple[str, int]) -> None:
         telnet = telnetlib.Telnet(*sock_tuple, timeout=30)
         assert telnet.sock is not None
         assert telnet.sock.gettimeout() == 30
         telnet.close()
 
-    def testTimeoutOpen(self, sock_tuple: Tuple[str, int]) -> None:
+    def testTimeoutOpen(self, sock_tuple: tuple[str, int]) -> None:
         telnet = telnetlib.Telnet()
         telnet.open(*sock_tuple, timeout=30)
         assert telnet.sock is not None
         assert telnet.sock.gettimeout() == 30
         telnet.close()
 
-    def testGetters(self, sock_tuple: Tuple[str, int]) -> None:
+    def testGetters(self, sock_tuple: tuple[str, int]) -> None:
         # Test telnet getter methods
         telnet = telnetlib.Telnet(*sock_tuple, timeout=30)
         t_sock = telnet.sock
@@ -153,21 +143,21 @@ class TelnetAlike(telnetlib.Telnet):
 
 class MockSelector(selectors.BaseSelector):
     def __init__(self) -> None:
-        self.keys: Dict[Union[int, HasFileno], selectors.SelectorKey] = {}
+        self.keys: dict[int | HasFileno, selectors.SelectorKey] = {}
 
     @property
     def resolution(self) -> float:
         return 1e-3
 
-    def register(self, fileobj: Union[int, HasFileno], events: int, data: Any = None) -> selectors.SelectorKey:
+    def register(self, fileobj: int | HasFileno, events: int, data: Any = None) -> selectors.SelectorKey:
         key = selectors.SelectorKey(fileobj, 0, events, data)
         self.keys[fileobj] = key
         return key
 
-    def unregister(self, fileobj: Union[int, HasFileno]) -> selectors.SelectorKey:
+    def unregister(self, fileobj: int | HasFileno) -> selectors.SelectorKey:
         return self.keys.pop(fileobj)
 
-    def select(self, timeout: Optional[float] = None) -> List[Tuple[selectors.SelectorKey, int]]:
+    def select(self, timeout: float | None = None) -> list[tuple[selectors.SelectorKey, int]]:
         block = False
         for fileobj in self.keys:
             if isinstance(fileobj, TelnetAlike):
@@ -179,7 +169,7 @@ class MockSelector(selectors.BaseSelector):
         else:
             return [(key, key.events) for key in self.keys.values()]
 
-    def get_map(self) -> Dict[Union[int, HasFileno], selectors.SelectorKey]:
+    def get_map(self) -> dict[int | HasFileno, selectors.SelectorKey]:
         return self.keys
 
 
@@ -316,7 +306,7 @@ class TestRead(TestExpectAndReadTestCase):
 
 
 class nego_collector:
-    def __init__(self, sb_getter: Optional[Callable[..., bytes]] = None) -> None:
+    def __init__(self, sb_getter: Callable[..., bytes] | None = None) -> None:
         self.seen = b""
         self.sb_getter = sb_getter
         self.sb_seen = b""
