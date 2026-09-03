@@ -43,7 +43,7 @@ import socket
 import sys
 from re import Match, Pattern
 from time import monotonic
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TextIO, TypeVar, cast
 
 from . import opt
 from ._machine import Command, Data, Error, ErrorKind, SubCommand, TelnetMachine
@@ -444,7 +444,8 @@ class Telnet:
             return
         with _TelnetSelector() as selector:
             selector.register(self, selectors.EVENT_READ)
-            selector.register(sys.stdin, selectors.EVENT_READ)
+            stdin = cast(TextIO, sys.stdin)
+            selector.register(stdin, selectors.EVENT_READ)
 
             while True:
                 for key, events in selector.select():
@@ -457,8 +458,8 @@ class Telnet:
                         if text:
                             sys.stdout.write(text.decode("ascii"))
                             sys.stdout.flush()
-                    elif key.fileobj is sys.stdin:
-                        line = sys.stdin.readline().encode("ascii")
+                    elif key.fileobj is stdin:
+                        line = stdin.readline().encode("ascii")
                         if not line:
                             return
                         self.write(line)
