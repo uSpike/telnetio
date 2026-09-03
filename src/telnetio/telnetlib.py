@@ -444,7 +444,7 @@ class Telnet:
             return
         with _TelnetSelector() as selector:
             selector.register(self, selectors.EVENT_READ)
-            stdin = cast(TextIO, sys.stdin)
+            stdin = cast("TextIO", sys.stdin)
             selector.register(stdin, selectors.EVENT_READ)
 
             while True:
